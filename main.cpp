@@ -154,7 +154,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
     case WM_CREATE: {
         g_window = window;
         HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HWND title = CreateWindowW(L"STATIC", L"F1：按 Ctrl + V，500 毫秒后按 Ctrl + 空格\nF2：输入 AOB，500 毫秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
+        HWND title = CreateWindowW(L"STATIC", L"F1：按 Ctrl + V，1 秒后按 Ctrl + 空格\nF2：输入 AOB，1 秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
         g_status = CreateWindowW(L"STATIC", L"状态：已暂停", WS_CHILD | WS_VISIBLE, 20, 78, 300, 25, window, reinterpret_cast<HMENU>(kStatusId), NULL, NULL);
         g_toggle = CreateWindowW(L"BUTTON", L"启用", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 20, 112, 150, 34, window, reinterpret_cast<HMENU>(kToggleId), NULL, NULL);
         HWND exitButton = CreateWindowW(L"BUTTON", L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 190, 112, 150, 34, window, reinterpret_cast<HMENU>(kExitId), NULL, NULL);
@@ -187,10 +187,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
             g_busy = false;
             UpdateStatus();
             InputError();
-        } else if (!SetTimer(window, kTimerId, 500, NULL)) {
+        } else if (!SetTimer(window, kTimerId, 1000, NULL)) {
             g_busy = false;
             UpdateStatus();
-            MessageBoxW(window, L"无法启动 500 毫秒定时器。", L"定时器错误", MB_OK | MB_ICONERROR);
+            MessageBoxW(window, L"无法启动 1 秒定时器。", L"定时器错误", MB_OK | MB_ICONERROR);
         }
         return 0;
     case WM_TIMER:

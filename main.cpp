@@ -16,7 +16,7 @@ const wchar_t kClassName[] = L"MedAobHotkeyWindow_82E6983D";
 const wchar_t kMutexName[] = L"Local\\MedAobHotkey_82E6983D";
 const UINT kTrayId = 1;
 const UINT kTimerId = 2;
-const UINT kHotkeyF1 = 101;
+const UINT kHotkeyPaste = 101;
 const UINT kHotkeyF2 = 102;
 const UINT kTrayMessage = WM_APP + 1;
 const UINT kShowMessage = WM_APP + 2;
@@ -41,22 +41,22 @@ void UpdateStatus() {
     SetWindowTextW(g_toggle, g_enabled ? L"暂停" : L"启用");
 }
 
-void ShowRegistrationError(int key, DWORD error) {
+void ShowRegistrationError(const wchar_t* key, DWORD error) {
     wchar_t message[256];
-    wsprintfW(message, L"无法注册全局快捷键 F%d（错误码 %lu）。\n该按键可能已被其他程序占用。请释放后重试。", key, error);
+    wsprintfW(message, L"无法注册全局快捷键 %s（错误码 %lu）。\n该按键可能已被其他程序占用。请释放后重试。", key, error);
     MessageBoxW(g_window, message, L"快捷键注册失败", MB_OK | MB_ICONERROR);
 }
 
 bool EnableHotkeys() {
     if (g_enabled) return true;
-    if (!RegisterHotKey(g_window, kHotkeyF1, MOD_NOREPEAT, VK_F1)) {
-        ShowRegistrationError(1, GetLastError());
+    if (!RegisterHotKey(g_window, kHotkeyPaste, MOD_CONTROL | MOD_NOREPEAT, 'Q')) {
+        ShowRegistrationError(L"Ctrl + Q", GetLastError());
         return false;
     }
     if (!RegisterHotKey(g_window, kHotkeyF2, MOD_NOREPEAT, VK_F2)) {
         DWORD error = GetLastError();
-        UnregisterHotKey(g_window, kHotkeyF1);
-        ShowRegistrationError(2, error);
+        UnregisterHotKey(g_window, kHotkeyPaste);
+        ShowRegistrationError(L"F2", error);
         return false;
     }
     g_enabled = true;
@@ -66,7 +66,7 @@ bool EnableHotkeys() {
 
 void DisableHotkeys() {
     if (!g_enabled) return;
-    UnregisterHotKey(g_window, kHotkeyF1);
+    UnregisterHotKey(g_window, kHotkeyPaste);
     UnregisterHotKey(g_window, kHotkeyF2);
     g_enabled = false;
     KillTimer(g_window, kTimerId);
@@ -154,7 +154,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
     case WM_CREATE: {
         g_window = window;
         HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HWND title = CreateWindowW(L"STATIC", L"F1：按 Ctrl + V，1 秒后按 Ctrl + 空格\nF2：输入 AOB，1 秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
+        HWND title = CreateWindowW(L"STATIC", L"Ctrl+Q：粘贴，1 秒后按 Ctrl+空格\nF2：输入 AOB，1 秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
         g_status = CreateWindowW(L"STATIC", L"状态：已暂停", WS_CHILD | WS_VISIBLE, 20, 78, 300, 25, window, reinterpret_cast<HMENU>(kStatusId), NULL, NULL);
         g_toggle = CreateWindowW(L"BUTTON", L"启用", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 20, 112, 150, 34, window, reinterpret_cast<HMENU>(kToggleId), NULL, NULL);
         HWND exitButton = CreateWindowW(L"BUTTON", L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 190, 112, 150, 34, window, reinterpret_cast<HMENU>(kExitId), NULL, NULL);
@@ -180,10 +180,10 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         break;
     case WM_HOTKEY:
         if (!g_enabled || g_busy) return 0;
-        if (wparam != kHotkeyF1 && wparam != kHotkeyF2) return 0;
+        if (wparam != kHotkeyPaste && wparam != kHotkeyF2) return 0;
         g_busy = true;
         UpdateStatus();
-        if (!(wparam == kHotkeyF1 ? SendCtrlKey('V') : SendText(L"AOB"))) {
+        if (!(wparam == kHotkeyPaste ? SendCtrlKey('V') : SendText(L"AOB"))) {
             g_busy = false;
             UpdateStatus();
             InputError();

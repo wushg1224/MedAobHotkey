@@ -94,9 +94,9 @@ bool SendText(const wchar_t* text) {
     return SendInputs(inputs, count);
 }
 
-bool SendCtrlSpace() {
+bool SendCtrlKey(WORD key) {
     INPUT inputs[4] = {};
-    const WORD keys[4] = {VK_CONTROL, VK_SPACE, VK_SPACE, VK_CONTROL};
+    const WORD keys[4] = {VK_CONTROL, key, key, VK_CONTROL};
     for (int i = 0; i < 4; ++i) {
         inputs[i].type = INPUT_KEYBOARD;
         inputs[i].ki.wVk = keys[i];
@@ -117,7 +117,7 @@ void AddTray() {
     data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     data.uCallbackMessage = kTrayMessage;
     data.hIcon = g_icon;
-    lstrcpyW(data.szTip, L"MED / AOB 快捷输入");
+    lstrcpyW(data.szTip, L"粘贴 / AOB 快捷输入");
     g_trayAdded = Shell_NotifyIconW(g_trayAdded ? NIM_MODIFY : NIM_ADD, &data) != FALSE;
     if (g_trayAdded) {
         data.uVersion = NOTIFYICON_VERSION_4;
@@ -154,7 +154,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
     case WM_CREATE: {
         g_window = window;
         HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HWND title = CreateWindowW(L"STATIC", L"F1：输入 MED，500 毫秒后按 Ctrl + 空格\nF2：输入 AOB，500 毫秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
+        HWND title = CreateWindowW(L"STATIC", L"F1：按 Ctrl + V，500 毫秒后按 Ctrl + 空格\nF2：输入 AOB，500 毫秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
         g_status = CreateWindowW(L"STATIC", L"状态：已暂停", WS_CHILD | WS_VISIBLE, 20, 78, 300, 25, window, reinterpret_cast<HMENU>(kStatusId), NULL, NULL);
         g_toggle = CreateWindowW(L"BUTTON", L"启用", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 20, 112, 150, 34, window, reinterpret_cast<HMENU>(kToggleId), NULL, NULL);
         HWND exitButton = CreateWindowW(L"BUTTON", L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 190, 112, 150, 34, window, reinterpret_cast<HMENU>(kExitId), NULL, NULL);
@@ -183,7 +183,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         if (wparam != kHotkeyF1 && wparam != kHotkeyF2) return 0;
         g_busy = true;
         UpdateStatus();
-        if (!SendText(wparam == kHotkeyF1 ? L"MED" : L"AOB")) {
+        if (!(wparam == kHotkeyF1 ? SendCtrlKey('V') : SendText(L"AOB"))) {
             g_busy = false;
             UpdateStatus();
             InputError();
@@ -196,7 +196,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
     case WM_TIMER:
         if (wparam == kTimerId) {
             KillTimer(window, kTimerId);
-            bool ok = g_enabled && SendCtrlSpace();
+            bool ok = g_enabled && SendCtrlKey(VK_SPACE);
             // Discard triggers received while this action was running.
             MSG pending;
             while (PeekMessageW(&pending, window, WM_HOTKEY, WM_HOTKEY, PM_REMOVE)) {}
@@ -257,7 +257,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int) {
     cls.hCursor = LoadCursorW(NULL, IDC_ARROW);
     cls.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     if (!RegisterClassExW(&cls)) return 1;
-    g_window = CreateWindowExW(0, kClassName, L"MED / AOB 快捷输入", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 380, 195, NULL, NULL, instance, NULL);
+    g_window = CreateWindowExW(0, kClassName, L"粘贴 / AOB 快捷输入", WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX, CW_USEDEFAULT, CW_USEDEFAULT, 380, 195, NULL, NULL, instance, NULL);
     if (!g_window) return 1;
     ShowWindow(g_window, SW_SHOW);
     UpdateWindow(g_window);

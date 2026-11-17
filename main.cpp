@@ -17,7 +17,7 @@ const wchar_t kMutexName[] = L"Local\\MedAobHotkey_82E6983D";
 const UINT kTrayId = 1;
 const UINT kTimerId = 2;
 const UINT kHotkeyPaste = 101;
-const UINT kHotkeyF2 = 102;
+const UINT kHotkeyAob = 102;
 const UINT kTrayMessage = WM_APP + 1;
 const UINT kShowMessage = WM_APP + 2;
 UINT g_taskbarCreated = 0;
@@ -53,10 +53,10 @@ bool EnableHotkeys() {
         ShowRegistrationError(L"Ctrl + Q", GetLastError());
         return false;
     }
-    if (!RegisterHotKey(g_window, kHotkeyF2, MOD_NOREPEAT, VK_F2)) {
+    if (!RegisterHotKey(g_window, kHotkeyAob, MOD_CONTROL | MOD_NOREPEAT, 'W')) {
         DWORD error = GetLastError();
         UnregisterHotKey(g_window, kHotkeyPaste);
-        ShowRegistrationError(L"F2", error);
+        ShowRegistrationError(L"Ctrl+W", error);
         return false;
     }
     g_enabled = true;
@@ -67,7 +67,7 @@ bool EnableHotkeys() {
 void DisableHotkeys() {
     if (!g_enabled) return;
     UnregisterHotKey(g_window, kHotkeyPaste);
-    UnregisterHotKey(g_window, kHotkeyF2);
+    UnregisterHotKey(g_window, kHotkeyAob);
     g_enabled = false;
     KillTimer(g_window, kTimerId);
     g_busy = false;
@@ -80,7 +80,11 @@ bool SendInputs(INPUT* inputs, UINT count) {
 
 bool SendText(const wchar_t* text) {
     INPUT inputs[8] = {};
-    UINT count = 0;
+    // Release the hotkey modifier before typing Unicode text.
+    inputs[0].type = INPUT_KEYBOARD;
+    inputs[0].ki.wVk = VK_CONTROL;
+    inputs[0].ki.dwFlags = KEYEVENTF_KEYUP;
+    UINT count = 1;
     for (const wchar_t* p = text; *p; ++p) {
         inputs[count].type = INPUT_KEYBOARD;
         inputs[count].ki.wScan = *p;
@@ -154,7 +158,7 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
     case WM_CREATE: {
         g_window = window;
         HFONT font = static_cast<HFONT>(GetStockObject(DEFAULT_GUI_FONT));
-        HWND title = CreateWindowW(L"STATIC", L"Ctrl+Q：粘贴，1 秒后按 Ctrl+空格\nF2：输入 AOB，1 秒后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
+        HWND title = CreateWindowW(L"STATIC", L"Ctrl+Q：粘贴，500ms后按 Ctrl+空格\nCtrl+W：输入 AOB，500ms后按 Ctrl + 空格", WS_CHILD | WS_VISIBLE, 20, 20, 330, 48, window, NULL, NULL, NULL);
         g_status = CreateWindowW(L"STATIC", L"状态：已暂停", WS_CHILD | WS_VISIBLE, 20, 78, 300, 25, window, reinterpret_cast<HMENU>(kStatusId), NULL, NULL);
         g_toggle = CreateWindowW(L"BUTTON", L"启用", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 20, 112, 150, 34, window, reinterpret_cast<HMENU>(kToggleId), NULL, NULL);
         HWND exitButton = CreateWindowW(L"BUTTON", L"退出", WS_CHILD | WS_VISIBLE | WS_TABSTOP | BS_PUSHBUTTON, 190, 112, 150, 34, window, reinterpret_cast<HMENU>(kExitId), NULL, NULL);
@@ -180,17 +184,17 @@ LRESULT CALLBACK WindowProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         break;
     case WM_HOTKEY:
         if (!g_enabled || g_busy) return 0;
-        if (wparam != kHotkeyPaste && wparam != kHotkeyF2) return 0;
+        if (wparam != kHotkeyPaste && wparam != kHotkeyAob) return 0;
         g_busy = true;
         UpdateStatus();
         if (!(wparam == kHotkeyPaste ? SendCtrlKey('V') : SendText(L"AOB"))) {
             g_busy = false;
             UpdateStatus();
             InputError();
-        } else if (!SetTimer(window, kTimerId, 1000, NULL)) {
+        } else if (!SetTimer(window, kTimerId, 500, NULL)) {
             g_busy = false;
             UpdateStatus();
-            MessageBoxW(window, L"无法启动 1 秒定时器。", L"定时器错误", MB_OK | MB_ICONERROR);
+            MessageBoxW(window, L"无法启动 500ms定时器。", L"定时器错误", MB_OK | MB_ICONERROR);
         }
         return 0;
     case WM_TIMER:
